@@ -50,12 +50,15 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -80,9 +83,17 @@ fun OtpScreen(palette: OtpPalette, dark: Boolean) {
 
     LaunchedEffect(state.status) {
         if (state.status == OtpStatus.Success) return@LaunchedEffect
-        runCatching {
-            focusRequester.requestFocus()
-            keyboard?.show()
+        repeat(8) {
+            val granted = try {
+                focusRequester.requestFocus()
+            } catch (_: IllegalStateException) {
+                false
+            }
+            if (granted) {
+                keyboard?.show()
+                return@LaunchedEffect
+            }
+            delay(16)
         }
     }
 
@@ -194,7 +205,7 @@ fun OtpScreen(palette: OtpPalette, dark: Boolean) {
                 .size(1.dp)
                 .alpha(0f)
                 .semantics { hideFromAccessibility() },
-            textStyle = androidx.compose.ui.text.TextStyle(color = Color.Transparent),
+            textStyle = TextStyle(color = Color.Transparent),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
             cursorBrush = SolidColor(Color.Transparent),
@@ -260,10 +271,10 @@ private fun DigitBox(
             .clip(CircleShape)
             .background(background.asColor())
             .border(borderWidth, borderColor.asColor(), CircleShape)
-            .semantics(mergeDescendants = true) {
+            .clearAndSetSemantics {
+                testTag = "otp_digit_${index + 1}"
                 contentDescription = OtpCopy.digitAnnouncement(index + 1)
-            }
-            .testTag("otp_digit_${index + 1}"),
+            },
         contentAlignment = Alignment.Center,
     ) {
         Text(

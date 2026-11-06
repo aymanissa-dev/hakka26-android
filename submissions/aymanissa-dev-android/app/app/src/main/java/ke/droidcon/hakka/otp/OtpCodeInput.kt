@@ -29,15 +29,17 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 
 @Composable
 fun OtpCodeInput(
@@ -51,9 +53,17 @@ fun OtpCodeInput(
 
     LaunchedEffect(state.status) {
         if (state.status == OtpStatus.Success) return@LaunchedEffect
-        runCatching {
-            focusRequester.requestFocus()
-            keyboard?.show()
+        repeat(8) {
+            val granted = try {
+                focusRequester.requestFocus()
+            } catch (_: IllegalStateException) {
+                false
+            }
+            if (granted) {
+                keyboard?.show()
+                return@LaunchedEffect
+            }
+            delay(16)
         }
     }
 
@@ -164,10 +174,10 @@ private fun DigitBox(
             .clip(CircleShape)
             .background(background.asColor())
             .border(borderWidth, borderColor.asColor(), CircleShape)
-            .semantics(mergeDescendants = true) {
+            .clearAndSetSemantics {
+                testTag = "otp_digit_${index + 1}"
                 contentDescription = OtpCopy.digitAnnouncement(index + 1)
-            }
-            .testTag("otp_digit_${index + 1}"),
+            },
         contentAlignment = Alignment.Center,
     ) {
         Text(
